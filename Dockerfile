@@ -10,7 +10,6 @@ ARG RUTORRENT_VERSION=3.10
 ARG RUTORRENT_REVISION=954479ffd00eb58ad14f9a667b3b9b1e108e80a2
 ARG GEOIP2_PHPEXT_VERSION=1.1.1
 ARG NGINX_VERSION=1.19.7
-ARG NGINX_DAV_VERSION=3.0.0
 ARG NGINX_UID=102
 ARG NGINX_GID=102
 
@@ -67,10 +66,8 @@ WORKDIR /dist/geoip-ext
 RUN curl -SsL "https://pecl.php.net/get/geoip-${GEOIP2_PHPEXT_VERSION}.tgz" -o "geoip.tgz"
 
 ARG NGINX_VERSION
-ARG NGINX_DAV_VERSION
 WORKDIR /dist/nginx
 RUN curl -sSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" | tar xz --strip 1
-RUN git clone --branch v${NGINX_DAV_VERSION} "https://github.com/arut/nginx-dav-ext-module.git" nginx-dav-ext
 
 ARG ALPINE_S6_TAG
 FROM crazymax/alpine-s6:${ALPINE_S6_TAG} AS builder
