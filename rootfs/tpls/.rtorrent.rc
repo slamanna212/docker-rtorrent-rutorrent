@@ -36,6 +36,9 @@ pieces.hash.on_completion.set = no
 # This may also be set using ulimit -m where 3/4 will be allocated to file chunks
 #pieces.memory.max.set = 1GB
 
+#Set Ports
+port_range = 55950-56000
+
 # Alternative calls to bind and ip that should handle dynamic ip's
 #schedule2 = ip_tick,0,1800,ip=rakshasa
 #schedule2 = bind_tick,0,1800,bind=rakshasa
