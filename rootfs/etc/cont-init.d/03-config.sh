@@ -17,8 +17,6 @@ XMLRPC_AUTHBASIC_STRING=${XMLRPC_AUTHBASIC_STRING:-rTorrent XMLRPC restricted ac
 XMLRPC_PORT=${XMLRPC_PORT:-8000}
 RUTORRENT_AUTHBASIC_STRING=${RUTORRENT_AUTHBASIC_STRING:-ruTorrent restricted access}
 RUTORRENT_PORT=${RUTORRENT_PORT:-8080}
-WEBDAV_AUTHBASIC_STRING=${WEBDAV_AUTHBASIC_STRING:-WebDAV restricted access}
-WEBDAV_PORT=${WEBDAV_PORT:-9000}
 
 RT_LOG_LEVEL=${RT_LOG_LEVEL:-info}
 RT_LOG_EXECUTE=${RT_LOG_EXECUTE:-false}
@@ -83,12 +81,6 @@ sed -e "s!@UPLOAD_MAX_SIZE@!$UPLOAD_MAX_SIZE!g" \
   -e "s!@RUTORRENT_AUTHBASIC_STRING@!$RUTORRENT_AUTHBASIC_STRING!g" \
   -e "s!@RUTORRENT_PORT@!$RUTORRENT_PORT!g" \
   /tpls/etc/nginx/conf.d/rutorrent.conf > /etc/nginx/conf.d/rutorrent.conf
-
-# Nginx WebDAV
-echo "Setting Nginx WebDAV configuration..."
-sed -e "s!@WEBDAV_AUTHBASIC_STRING@!$WEBDAV_AUTHBASIC_STRING!g" \
-  -e "s!@WEBDAV_PORT@!$WEBDAV_PORT!g" \
-  /tpls/etc/nginx/conf.d/webdav.conf > /etc/nginx/conf.d/webdav.conf
 
 # Init
 echo "Initializing files and folders..."

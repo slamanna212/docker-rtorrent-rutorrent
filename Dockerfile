@@ -180,7 +180,6 @@ RUN ./configure \
   --with-stream_ssl_module \
   --with-http_addition_module \
   --with-http_auth_request_module \
-  --with-http_dav_module \
   --with-http_degradation_module \
   --with-http_flv_module \
   --with-http_gunzip_module \
