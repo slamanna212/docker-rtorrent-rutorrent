@@ -98,7 +98,6 @@ mkdir -p /data/geoip \
   /downloads/temp
 touch /passwd/rpc.htpasswd \
   /passwd/rutorrent.htpasswd \
-  /passwd/webdav.htpasswd \
   /data/rtorrent/log/rtorrent.log \
   "${RU_LOG_FILE}"
 rm -f /data/rtorrent/.session/rtorrent.lock
@@ -114,11 +113,7 @@ if [ ! -s "/passwd/rutorrent.htpasswd" ]; then
   sed -i "s!auth_basic .*!#auth_basic!g" /etc/nginx/conf.d/rutorrent.conf
   sed -i "s!auth_basic_user_file.*!#auth_basic_user_file!g" /etc/nginx/conf.d/rutorrent.conf
 fi
-if [ ! -s "/passwd/webdav.htpasswd" ]; then
-  echo "webdav.htpasswd is empty, removing authentication..."
-  sed -i "s!auth_basic .*!#auth_basic!g" /etc/nginx/conf.d/webdav.conf
-  sed -i "s!auth_basic_user_file.*!#auth_basic_user_file!g" /etc/nginx/conf.d/webdav.conf
-fi
+
 
 # rTorrent local config
 echo "Checking rTorrent local configuration..."
