@@ -198,7 +198,7 @@ RUN ./configure \
   --with-stream=dynamic \
   --with-http_geoip_module=dynamic \
   --with-http_image_filter_module=dynamic \
-  --with-http_xslt_module=dynamic \
+  --with-http_xslt_module=dynamic 
 RUN make -j$(nproc)
 RUN make install -j$(nproc)
 RUN make DESTDIR=${DIST_PATH} install -j$(nproc)
