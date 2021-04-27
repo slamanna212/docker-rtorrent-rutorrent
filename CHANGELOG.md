@@ -1,9 +1,5 @@
 # Changelog
 
-## 3.10-0.9.8-0.13.8-r13 (2021/04/13)
-
-* Dynamically manage healthcheck ports (#76)
-
 ## 3.10-0.9.8-0.13.8-r12 (2021/04/11)
 
 * Initialize ruTorrent plugins (#74)
