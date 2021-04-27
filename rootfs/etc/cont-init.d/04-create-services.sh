@@ -25,6 +25,6 @@ with-contenv
 /bin/export HOME /data/rtorrent
 /bin/export PWD /data/rtorrent
 s6-setuidgid ${PUID}:${PGID}
-rtorrent -D -o import=/etc/rtorrent/.rtlocal.rc -i ${WAN_IP}
+rtorrent -D -o import=/etc/rtorrent/.rtlocal.rc
 EOL
 chmod +x /etc/services.d/rtorrent/run
