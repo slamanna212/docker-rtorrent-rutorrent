@@ -1,7 +1,8 @@
 #!/usr/bin/with-contenv sh
+# shellcheck shell=sh
 
-WAN_IP=${WAN_IP:-$(dig +short myip.opendns.com @resolver1.opendns.com)}
-printf "%s" "$WAN_IP" > /var/run/s6/container_environment/WAN_IP
+#WAN_IP=${WAN_IP:-10.0.0.1}
+#WAN_IP_CMD=${WAN_IP_CMD:-"dig +short myip.opendns.com @resolver1.opendns.com"}
 
 TZ=${TZ:-UTC}
 MEMORY_LIMIT=${MEMORY_LIMIT:-256M}
@@ -9,9 +10,12 @@ UPLOAD_MAX_SIZE=${UPLOAD_MAX_SIZE:-16M}
 CLEAR_ENV=${CLEAR_ENV:-yes}
 OPCACHE_MEM_SIZE=${OPCACHE_MEM_SIZE:-128}
 MAX_FILE_UPLOADS=${MAX_FILE_UPLOADS:-50}
+AUTH_DELAY=${AUTH_DELAY:-0s}
 REAL_IP_FROM=${REAL_IP_FROM:-0.0.0.0/32}
 REAL_IP_HEADER=${REAL_IP_HEADER:-X-Forwarded-For}
 LOG_IP_VAR=${LOG_IP_VAR:-remote_addr}
+LOG_ACCESS=${LOG_ACCESS:-true}
+XMLRPC_SIZE_LIMIT=${XMLRPC_SIZE_LIMIT:-1M}
 
 XMLRPC_AUTHBASIC_STRING=${XMLRPC_AUTHBASIC_STRING:-rTorrent XMLRPC restricted access}
 RUTORRENT_AUTHBASIC_STRING=${RUTORRENT_AUTHBASIC_STRING:-ruTorrent restricted access}
@@ -46,6 +50,15 @@ RUTORRENT_HEALTH_PORT=$((RUTORRENT_PORT + 1))
 WEBDAV_PORT=${WEBDAV_PORT:-9000}
 WEBDAV_HEALTH_PORT=$((WEBDAV_PORT + 1))
 
+# WAN IP
+if [ -z "$WAN_IP" ] && [ -n "$WAN_IP_CMD" ]; then
+  WAN_IP=$(eval "$WAN_IP_CMD")
+fi
+if [ -n "$WAN_IP" ]; then
+  echo "Public IP address enforced to ${WAN_IP}"
+fi
+printf "%s" "$WAN_IP" > /var/run/s6/container_environment/WAN_IP
+
 # Timezone
 echo "Setting timezone to ${TZ}..."
 ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime
@@ -73,13 +86,19 @@ echo "Setting Nginx configuration..."
 sed -e "s#@REAL_IP_FROM@#$REAL_IP_FROM#g" \
   -e "s#@REAL_IP_HEADER@#$REAL_IP_HEADER#g" \
   -e "s#@LOG_IP_VAR@#$LOG_IP_VAR#g" \
+  -e "s#@AUTH_DELAY@#$AUTH_DELAY#g" \
   /tpls/etc/nginx/nginx.conf > /etc/nginx/nginx.conf
+if [ "${LOG_ACCESS}" != "true" ]; then
+  echo "  Disabling Nginx access log..."
+  sed -i "s!access_log /proc/self/fd/1 main!access_log off!g" /etc/nginx/nginx.conf
+fi
 
 # Nginx XMLRPC over SCGI
 echo "Setting Nginx XMLRPC over SCGI configuration..."
 sed -e "s!@XMLRPC_AUTHBASIC_STRING@!$XMLRPC_AUTHBASIC_STRING!g" \
   -e "s!@XMLRPC_PORT@!$XMLRPC_PORT!g" \
   -e "s!@XMLRPC_HEALTH_PORT@!$XMLRPC_HEALTH_PORT!g" \
+  -e "s!@XMLRPC_SIZE_LIMIT@!$XMLRPC_SIZE_LIMIT!g" \
   /tpls/etc/nginx/conf.d/rpc.conf > /etc/nginx/conf.d/rpc.conf
 
 # Nginx ruTorrent
@@ -128,6 +147,7 @@ echo "Checking rTorrent local configuration..."
 sed -e "s!@RT_LOG_LEVEL@!$RT_LOG_LEVEL!g" \
   -e "s!@RT_DHT_PORT@!$RT_DHT_PORT!g" \
   -e "s!@RT_INC_PORT@!$RT_INC_PORT!g" \
+  -e "s!@XMLRPC_SIZE_LIMIT@!$XMLRPC_SIZE_LIMIT!g" \
   /tpls/etc/rtorrent/.rtlocal.rc > /etc/rtorrent/.rtlocal.rc
 if [ "${RT_LOG_EXECUTE}" = "true" ]; then
   echo "  Enabling rTorrent execute log..."
@@ -242,32 +262,36 @@ if [ -n "$RU_REMOVE_CORE_PLUGINS" ]; then
   done
 fi
 
-# Override ruTorrent plugins config
-echo "Overriding ruTorrent plugins config (create)..."
-cat > /var/www/rutorrent/plugins/create/conf.php <<EOL
+echo "Setting custom config for create plugin..."
+if [ -d "/var/www/rutorrent/plugins/create" ]; then
+
+  cat > /var/www/rutorrent/plugins/create/conf.php <<EOL
 <?php
 
 \$useExternal = 'mktorrent';
 \$pathToCreatetorrent = '/usr/local/bin/mktorrent';
 \$recentTrackersMaxCount = 15;
 EOL
-chown nobody.nogroup "/var/www/rutorrent/plugins/create/conf.php"
+  chown nobody.nogroup "/var/www/rutorrent/plugins/create/conf.php"
+else
+  echo "  WARNING: create plugin does not exist"
+fi
 
-# Check ruTorrent plugins
 echo "Checking ruTorrent custom plugins..."
 plugins=$(ls -l /data/rutorrent/plugins | egrep '^d' | awk '{print $9}')
 for plugin in ${plugins}; do
   if [ "${plugin}" == "theme" ]; then
-    echo "  WARNING: Plugin theme cannot be overriden"
+    echo "  WARNING: theme plugin cannot be overriden"
     continue
   fi
-  echo "  Copying custom plugin ${plugin}..."
-  rm -rf "/var/www/rutorrent/plugins/${plugin}"
+  echo "  Copying custom ${plugin} plugin..."
+  if [ -d "/var/www/rutorrent/plugins/${plugin}" ]; then
+    rm -rf "/var/www/rutorrent/plugins/${plugin}"
+  fi
   cp -Rf "/data/rutorrent/plugins/${plugin}" "/var/www/rutorrent/plugins/${plugin}"
   chown -R nobody.nogroup "/var/www/rutorrent/plugins/${plugin}"
 done
 
-# Check ruTorrent plugins config
 echo "Checking ruTorrent plugins configuration..."
 for pluginConfFile in /data/rutorrent/plugins-conf/*.php; do
   if [ ! -f "$pluginConfFile" ]; then
@@ -276,11 +300,11 @@ for pluginConfFile in /data/rutorrent/plugins-conf/*.php; do
   pluginConf=$(basename "$pluginConfFile")
   pluginName=$(echo "$pluginConf" | cut -f 1 -d '.')
   if [ ! -d "/var/www/rutorrent/plugins/${pluginName}" ]; then
-    echo "  WARNING: Plugin $pluginName does not exist"
+    echo "  WARNING: $pluginName plugin does not exist"
     continue
   fi
   if [ -d "/data/rutorrent/plugins/${pluginName}" ]; then
-    echo "  WARNING: Plugin $pluginName already present in /data/rutorrent/plugins/"
+    echo "  WARNING: $pluginName plugin already exist in /data/rutorrent/plugins/"
     continue
   fi
   echo "  Copying ${pluginName} plugin config..."
@@ -288,25 +312,29 @@ for pluginConfFile in /data/rutorrent/plugins-conf/*.php; do
   chown nobody.nogroup "/var/www/rutorrent/plugins/${pluginName}/conf.php"
 done
 
-# Check ruTorrent themes
 echo "Checking ruTorrent custom themes..."
 themes=$(ls -l /data/rutorrent/themes | egrep '^d' | awk '{print $9}')
 for theme in ${themes}; do
-  echo "  Copying custom theme ${theme}..."
-  rm -rf "/var/www/rutorrent/plugins/theme/themes/${theme}"
+  echo "  Copying custom ${theme} theme..."
+  if [ -d "/var/www/rutorrent/plugins/theme/themes/${theme}" ]; then
+    rm -rf "/var/www/rutorrent/plugins/theme/themes/${theme}"
+  fi
   cp -Rf "/data/rutorrent/themes/${theme}" "/var/www/rutorrent/plugins/theme/themes/${theme}"
   chown -R nobody.nogroup "/var/www/rutorrent/plugins/theme/themes/${theme}"
 done
 
-# GeoIP2 databases
-if [ ! "$(ls -A /data/geoip)" ]; then
-  cp -f /var/mmdb/*.mmdb /data/geoip/
+echo "Setting GeoIP2 databases for geoip2 plugin..."
+if [ -d "/var/www/rutorrent/plugins/geoip2" ]; then
+  if [ ! "$(ls -A /data/geoip)" ]; then
+    cp -f /var/mmdb/*.mmdb /data/geoip/
+  fi
+  ln -sf /data/geoip/GeoLite2-ASN.mmdb /var/www/rutorrent/plugins/geoip2/database/GeoLite2-ASN.mmdb
+  ln -sf /data/geoip/GeoLite2-City.mmdb /var/www/rutorrent/plugins/geoip2/database/GeoLite2-City.mmdb
+  ln -sf /data/geoip/GeoLite2-Country.mmdb /var/www/rutorrent/plugins/geoip2/database/GeoLite2-Country.mmdb
+else
+  echo "  WARNING: geoip2 plugin does not exist"
 fi
-ln -sf /data/geoip/GeoLite2-ASN.mmdb /var/www/rutorrent/plugins/geoip2/database/GeoLite2-ASN.mmdb
-ln -sf /data/geoip/GeoLite2-City.mmdb /var/www/rutorrent/plugins/geoip2/database/GeoLite2-City.mmdb
-ln -sf /data/geoip/GeoLite2-Country.mmdb /var/www/rutorrent/plugins/geoip2/database/GeoLite2-Country.mmdb
 
-# Perms
 echo "Fixing perms..."
 chown rtorrent. \
   /data/rutorrent/share/users \

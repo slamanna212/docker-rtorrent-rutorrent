@@ -1,5 +1,41 @@
 # Changelog
 
+## 3.10-0.9.8-0.13.8-r20 (2022/05/02)
+
+* Fix unrar not available since alpine 3.15 (#161)
+
+## 3.10-0.9.8-0.13.8-r19 (2022/04/29)
+
+* Fix GeoIP2 ruTorrent plugin version (#159)
+* Optimize Dockerfile (#157)
+
+## 3.10-0.9.8-0.13.8-r18 (2022/04/28)
+
+* Opt-in `WAN_IP` and add `WAN_IP_CMD` env var (#150 #153)
+* Check plugins existence (#155)
+* Option to disable Nginx access log (#154)
+* Alpine Linux 3.15 (#151)
+* Use GitHub Actions cache backend (#152)
+
+## 3.10-0.9.8-0.13.8-r17 (2021/08/19)
+
+* Update dependencies (#117)
+* Alpine Linux 3.14 (#116)
+
+## 3.10-0.9.8-0.13.8-r16 (2021/08/01)
+
+* Fix Traefik example (#113)
+* Add `AUTH_DELAY` env var (#109)  
+* Add `XMLRPC_SIZE_LIMIT` env var (#107)
+
+## 3.10-0.9.8-0.13.8-r15 (2021/06/14)
+
+* Add `posix` PHP extension (#102)
+
+## 3.10-0.9.8-0.13.8-r14 (2021/05/31)
+
+* `ifconfig.me` as fallback for automatic WAN_IP determination (#96)
+
 ## 3.10-0.9.8-0.13.8-r13 (2021/04/13)
 
 * Dynamically manage healthcheck ports (#76)
